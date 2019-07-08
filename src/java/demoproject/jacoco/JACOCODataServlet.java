@@ -12,11 +12,17 @@ public class JACOCODataServlet extends JSONServlet {
     @Override
     public JSONObject processRequest(JSONObject json, HttpSession session) throws IOException{
         JSONObject result = new JSONObject();
+        
         this.jacocoDataReader.setExecFullPath(session.getServletContext().getRealPath("/WEB-INF/jacoco.exec"));
-        this.jacocoDataReader.setClassPath(session.getServletContext().getRealPath("/WEB-INF/classes"));
-        this.jacocoDataReader.setHtmlPath(session.getServletContext().getRealPath("/coverage-report"));
+        this.jacocoDataReader.addClassPath(session.getServletContext().getRealPath("/WEB-INF/classes"));
+        this.jacocoDataReader.setHtmlPath(session.getServletContext().getRealPath("/coverage"));
         this.jacocoDataReader.setSourcePath(session.getServletContext().getRealPath("/WEB-INF/src"));
-        this.jacocoDataReader.setJarFullPath(session.getServletContext().getRealPath("/WEB-INF/lib/jacocoant.jar"));
+        this.jacocoDataReader.setJarFullPath(session.getServletContext().getRealPath("/WEB-INF/lib/jacococli.jar"));
+
+        if (json.has("path")){
+            String coveragePath = json.getString("path");
+            this.jacocoDataReader.setHtmlPath(session.getServletContext().getRealPath("/coverage/" + coveragePath));
+        }
         
         switch (json.getString("action")){
             case "exec":

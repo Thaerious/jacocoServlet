@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.util.ArrayList;
 import javax.servlet.http.HttpSession;
 import org.jacoco.core.data.ExecutionDataWriter;
 import org.jacoco.core.runtime.RemoteControlReader;
@@ -17,15 +18,14 @@ public final class JACOCODataReader {
     private String execFullPath = null;
     private String jarFullPath = null;
     private String sourcePath = null;
-    private String classPath = null;
+    private ArrayList<String> classPaths = new ArrayList<String>();
     private String htmlPath = null;
     
     JACOCODataReader(){}    
     
     public String exec(HttpSession session) throws IOException {  
         if (execFullPath == null) throw new NullPointerException("execFullPath not set");
-        if (jarFullPath == null) throw new NullPointerException("jarFullPath not set");
-        if (classPath == null) throw new NullPointerException("classPath not set");
+        if (jarFullPath == null) throw new NullPointerException("jarFullPath not set");        
         
         final FileOutputStream localFile = new FileOutputStream(execFullPath);
         final ExecutionDataWriter localWriter = new ExecutionDataWriter(localFile);
@@ -36,8 +36,7 @@ public final class JACOCODataReader {
         final RemoteControlReader reader = new RemoteControlReader(socket.getInputStream());
         reader.setSessionInfoVisitor(localWriter);
         reader.setExecutionDataVisitor(localWriter);
-        
-        
+                
         /* Send a dump command and read the response */
         writer.visitDumpCommand(true, false);
         if (!reader.read()) {
@@ -49,11 +48,13 @@ public final class JACOCODataReader {
         return execFullPath;
     }
 
-//    java -jar %JACOCO_JAR% report %ACOCO_REPORT% --sourcefiles %SOURCEFILES% --classfiles %CLASSFILES% --html %HTML_DIR%
     public String report(HttpSession session) throws IOException{
+        if (classPaths.isEmpty()) throw new NullPointerException("no classPath set");
         if (htmlPath == null) throw new NullPointerException("htmlPath not set");
+        
         String line;
-        String command = String.format("java -jar %s report %s --sourcefiles %s --classfiles %s --html %s", jarFullPath, execFullPath, sourcePath, classPath, htmlPath);
+        String command = String.format("java -jar %s report %s --sourcefiles %s %s --html %s", jarFullPath, execFullPath, sourcePath, buildClasspath(), htmlPath);
+        System.out.println("**> " + command);
         Process process = Runtime.getRuntime().exec(command);
         
         BufferedReader inputReader = new BufferedReader(new InputStreamReader(process.getInputStream()));                
@@ -67,6 +68,16 @@ public final class JACOCODataReader {
         }        
         
         return htmlPath;
+    }
+    
+    String buildClasspath(){
+        StringBuilder builder = new StringBuilder();
+        for (String classPath : this.classPaths){
+            builder.append("--classfiles ");
+            builder.append(classPath);
+            builder.append(" ");
+        }
+        return builder.toString();
     }
     
     void clear(HttpSession session) {
@@ -98,8 +109,8 @@ public final class JACOCODataReader {
         this.sourcePath = sourcePath;
     }
 
-    public void setClassPath(String classPath) {
-        this.classPath = classPath;
+    public void addClassPath(String classPath) {
+        this.classPaths.add(classPath);
     }
 
     public void setHtmlPath(String htmlPath) {
